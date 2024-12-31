@@ -6,7 +6,9 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import Helper.DBConnection;
@@ -40,7 +42,7 @@ public class SinavGoruntulemeGUI extends JFrame {
         sinavTable = new JTable(tableModel);
         scrollPane = new JScrollPane(sinavTable);
 
-     
+        // Butonlar
         JPanel buttonPanel = new JPanel();
         btnSil = new JButton("Sınavı Sil");
         btnGuncelle = new JButton("Sınavı Güncelle");
@@ -53,7 +55,7 @@ public class SinavGoruntulemeGUI extends JFrame {
 
         loadSinavData();
 
-        
+        // Silme işlemi
         btnSil.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -68,7 +70,7 @@ public class SinavGoruntulemeGUI extends JFrame {
             }
         });
 
-        
+        // Güncelleme işlemi
         btnGuncelle.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -80,13 +82,10 @@ public class SinavGoruntulemeGUI extends JFrame {
                     String bitisSaati = JOptionPane.showInputDialog("Yeni Bitiş Saatini Girin (HH:MM):");
                     int ogrenciSayisi = Integer.parseInt(JOptionPane.showInputDialog("Öğrenci Sayısını Girin:"));
 
-                   
-                    if (!isValidTime(baslangicSaati) || !isValidTime(bitisSaati)) {
-                        JOptionPane.showMessageDialog(null, "Saatler yalnızca 09:00 - 17:00 arasında, tam veya yarım saat olmalı.");
-                    } else if (checkForConflicts(tarih, baslangicSaati, bitisSaati)) {
+                    if (checkForConflicts(tarih, baslangicSaati, bitisSaati)) {
                         JOptionPane.showMessageDialog(null, "Bu saat diliminde bir sınav var, lütfen farklı bir zaman dilimi seçin.");
                     } else {
-                        assignRoomsAndInvigilators(ogrenciSayisi, sinavId); 
+                        assignRoomsAndInvigilators(ogrenciSayisi, sinavId);
                         guncelleSinav(sinavId, tarih, baslangicSaati, bitisSaati);
                         loadSinavData();
                     }
@@ -102,15 +101,13 @@ public class SinavGoruntulemeGUI extends JFrame {
     private void loadSinavData() {
         String query = "SELECT s.id, d.name AS ders_adi, s.ogrenci_sayisi, s.date, s.start_time, s.end_time, " +
                        "s.salon_id_1, s.salon_id_2, s.salon_id_3, s.gozetmen_id_1, s.gozetmen_id_2, s.gozetmen_id_3 " +
-                       "FROM otomasyon.sinav s JOIN otomasyon.dersler d ON s.ders_id = d.id";  
+                       "FROM otomasyon.sinav s JOIN otomasyon.dersler d ON s.ders_id = d.id";
         try {
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(query);
 
-            
             tableModel.setRowCount(0);
 
-            
             while (resultSet.next()) {
                 String salonAdlari = getSalonAdlari(resultSet);
                 String gozetmenAdlari = getGozetmenAdlari(resultSet);
@@ -122,8 +119,8 @@ public class SinavGoruntulemeGUI extends JFrame {
                         resultSet.getString("date"),
                         resultSet.getString("start_time"),
                         resultSet.getString("end_time"),
-                        salonAdlari, 
-                        gozetmenAdlari 
+                        salonAdlari,
+                        gozetmenAdlari
                 });
             }
         } catch (SQLException e) {
@@ -135,7 +132,7 @@ public class SinavGoruntulemeGUI extends JFrame {
         StringBuilder salonAdlari = new StringBuilder();
         for (int i = 1; i <= 3; i++) {
             int salonId = resultSet.getInt("salon_id_" + i);
-            if (salonId > 0) { 
+            if (salonId > 0) {
                 salonAdlari.append("SALON").append(salonId).append(" ");
             }
         }
@@ -146,7 +143,7 @@ public class SinavGoruntulemeGUI extends JFrame {
         StringBuilder gozetmenAdlari = new StringBuilder();
         for (int i = 1; i <= 3; i++) {
             int gozetmenId = resultSet.getInt("gozetmen_id_" + i);
-            if (gozetmenId > 0) { 
+            if (gozetmenId > 0) {
                 gozetmenAdlari.append("Gözetmen").append(gozetmenId).append(" ");
             }
         }
@@ -188,33 +185,21 @@ public class SinavGoruntulemeGUI extends JFrame {
             preparedStatement.setString(2, endTime);
             preparedStatement.setString(3, startTime);
             ResultSet resultSet = preparedStatement.executeQuery();
-            return resultSet.next(); 
+            return resultSet.next();
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    private boolean isValidTime(String time) {
-        String[] validTimes = {"09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", 
-                                "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"};
-        for (String validTime : validTimes) {
-            if (validTime.equals(time)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void assignRoomsAndInvigilators(int ogrenciSayisi, int sinavId) {
         if (ogrenciSayisi <= 0) {
-            
             JOptionPane.showMessageDialog(null, "Öğrenci sayısı 0 olduğunda salon ve gözetmen ataması yapılmaz.");
             return;
         }
 
-        int salonSayisi = (int) Math.ceil(ogrenciSayisi / 50.0); 
-        if (salonSayisi > 3) salonSayisi = 3;  
+        int salonSayisi = (int) Math.ceil(ogrenciSayisi / 50.0);
+        if (salonSayisi > 3) salonSayisi = 3;
         Set<Integer> assignedRooms = new HashSet<>();
         Set<Integer> assignedInvigilators = new HashSet<>();
         StringBuilder salonIds = new StringBuilder();
@@ -222,33 +207,35 @@ public class SinavGoruntulemeGUI extends JFrame {
 
         Random rand = new Random();
 
-       
-        for (int i = 1; i <= salonSayisi; i++) {  
-           
-            int salonId = rand.nextInt(100) + 1; 
+        // Salonları veritabanından çekme
+        List<Integer> salonList = getAvailableRooms();
+
+        // Salon sayısına göre salonları atama
+        for (int i = 1; i <= salonSayisi; i++) {
+            int salonId = salonList.get(rand.nextInt(salonList.size())); // Veritabanından çekilen salonlar arasından rastgele bir salon seç
             while (assignedRooms.contains(salonId)) {
-                salonId = rand.nextInt(100) + 1;
+                salonId = salonList.get(rand.nextInt(salonList.size())); // Tekrar aynı salon seçilmesin
             }
             assignedRooms.add(salonId);
             salonIds.append(salonId).append(" ");
 
-            int gozetmenId = rand.nextInt(10) + 1; 
+            // Gözetmen ataması
+            int gozetmenId = rand.nextInt(10) + 1;
             while (assignedInvigilators.contains(gozetmenId)) {
-                gozetmenId = rand.nextInt(10) + 1;
+                gozetmenId = rand.nextInt(10) + 1; // Gözetmen atamasında da tekrarlama olmasın
             }
             assignedInvigilators.add(gozetmenId);
             gozetmenIds.append(gozetmenId).append(" ");
         }
 
-       
+        // Veritabanına güncelleme
         String updateQuery = "UPDATE otomasyon.sinav SET salon_id_1 = ?, salon_id_2 = ?, salon_id_3 = ?, " +
                              "gozetmen_id_1 = ?, gozetmen_id_2 = ?, gozetmen_id_3 = ? WHERE id = ?";
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(updateQuery);
             String[] salonIdsArray = salonIds.toString().trim().split(" ");
             String[] gozetmenIdsArray = gozetmenIds.toString().trim().split(" ");
-            
-            
+
             for (int i = 0; i < salonSayisi; i++) {
                 preparedStatement.setInt(i + 1, Integer.parseInt(salonIdsArray[i]));
                 preparedStatement.setInt(i + 4, Integer.parseInt(gozetmenIdsArray[i]));
@@ -258,6 +245,23 @@ public class SinavGoruntulemeGUI extends JFrame {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    // Salonları veritabanından çeken metod
+    private List<Integer> getAvailableRooms() {
+        List<Integer> salonList = new ArrayList<>();
+        String query = "SELECT id FROM otomasyon.salon"; // Salonlar tablosundan salon ID'lerini alıyoruz
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery(query);
+
+            while (resultSet.next()) {
+                salonList.add(resultSet.getInt("id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return salonList;
     }
 
     public static void main(String[] args) {

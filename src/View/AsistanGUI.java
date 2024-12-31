@@ -81,3 +81,4 @@ class SinavEklemeGUI extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     }
 }
+
